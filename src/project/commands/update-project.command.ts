@@ -1,4 +1,4 @@
-import { UnprocessableEntityException } from "@nestjs/common";
+import { NotFoundException, UnprocessableEntityException } from "@nestjs/common";
 import { CommandHandler, ICommandHandler } from "@nestjs/cqrs";
 import { CosmosService } from "src/services/cosmos.service";
 import { UpdateProjectDto } from "../dtos/update-project.dto";
@@ -17,18 +17,20 @@ export class UpdateProjectCommandHandler implements ICommandHandler<UpdateProjec
     constructor(private readonly cosmosService: CosmosService) { }
 
     async execute(command: UpdateProjectCommand): Promise<any> {
-        const form = {
-            name: command.form.name,
-            description: command.form.description,
-            versions: []
-        };
         try {
-            const { resources: projects } = await this.cosmosService.projectsContainer().items
-                .query(`select * from projects as project where project.id =  '${command.projectId}'`).fetchAll();
+            const { resource: oldItem } = await this.cosmosService.projectsContainer().item(command.projectId, command.projectId).read();
+            if (!oldItem) {
+                throw new NotFoundException('Project was not found!')
+            }
+            const newItem = oldItem;
+            newItem.name = command.form.name;
+            newItem.description = command.form.description;
 
-            //TODO
+            const { resource: replaced } = await this.cosmosService.projectsContainer()
+                .item(command.projectId, command.projectId)
+                .replace(newItem);
 
-            const { resource: updatedItem } = await this.cosmosService.projectsContainer().items.upsert(form, {});
+            return newItem;
         } catch (error) {
             throw new UnprocessableEntityException(error);
         }

@@ -15,7 +15,7 @@ export class GetSingleProjectQueryHandler implements IQueryHandler<GetSingleProj
 
     async execute(query: GetSingleProjectQuery): Promise<any> {
         const { resource: item } = await this.cosmosService.projectsContainer().item(query.projectId, query.projectId).read();
-        
+
         return item;
     }
 
